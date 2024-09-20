@@ -1,0 +1,440 @@
+REPORT zpractice_13.
+
+TABLES: bkpf, bseg , kna1 , lfa1 , adrc .
+
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE text-001.
+PARAMETERS: c_code TYPE bkpf-bukrs.
+SELECT-OPTIONS:s_doc FOR bkpf-belnr.
+PARAMETERS :  s_year TYPE bkpf-gjahr.
+PARAMETERS: s_kunnr TYPE kna1-kunnr.
+
+SELECTION-SCREEN END OF BLOCK b1.
+
+TYPES: BEGIN OF s_bkpf,
+         bukrs TYPE bkpf-bukrs,
+         belnr TYPE belnr_d,
+         gjahr TYPE bkpf-gjahr,
+         blart TYPE bkpf-blart,
+         bldat TYPE bkpf-bldat,
+         budat TYPE bkpf-budat,
+         monat TYPE bkpf-monat,
+       END OF s_bkpf.
+
+DATA: it_bkpf TYPE TABLE OF s_bkpf,
+      wa_bkpf TYPE s_bkpf.
+
+TYPES: BEGIN OF s_bseg,
+         bukrs TYPE bseg-bukrs,
+         belnr TYPE belnr_d,
+         gjahr TYPE bkpf-gjahr,
+         buzei TYPE bseg-buzei,
+         bschl TYPE bseg-bschl,
+         koart TYPE bseg-koart,
+         umskz TYPE bseg-umskz,
+         umsks TYPE bseg-umsks,
+         shkzg TYPE bseg-shkzg,
+         dmbtr TYPE bseg-dmbtr,
+         wrbtr TYPE bseg-wrbtr,
+         kunnr TYPE bseg-kunnr,
+         lifnr TYPE lifnr,
+       END OF s_bseg.
+
+DATA: it_bseg TYPE TABLE OF s_bseg,
+      wa_bseg TYPE s_bseg.
+
+TYPES : BEGIN OF s_kna1 ,
+          kunnr TYPE kunnr,
+          name1 TYPE name1_gp,
+*          lifnr TYPE lifnr,
+          adrnr TYPE adrnr,
+        END OF s_kna1 .
+DATA wa_kna1 TYPE s_kna1 .
+DATA it_kna1 TYPE TABLE OF s_kna1 .
+
+TYPES : BEGIN OF s_lfa1 ,
+          lifnr TYPE lfa1-lifnr,
+          name1 TYPE name1_gp,
+          adrnr TYPE adrnr,
+        END OF s_lfa1.
+
+DATA wa_lfa1 TYPE s_lfa1 .
+DATA it_lfa1 TYPE TABLE OF s_lfa1 .
+
+TYPES : BEGIN OF s_adrc ,
+          addrnumber TYPE ad_addrnum,
+          city1      TYPE ad_city1,
+          street     TYPE ad_street,
+          post_code1 TYPE ad_pstcd1,
+        END OF s_adrc .
+
+
+
+
+DATA : wa_adrc   TYPE s_adrc,
+       it_adrc_c TYPE TABLE OF s_adrc,
+       it_adrc_v TYPE TABLE OF s_adrc.
+
+
+
+TYPES: BEGIN OF s_final,
+         bukrs        TYPE bkpf-bukrs,
+         belnr        TYPE belnr_d,
+         gjahr        TYPE bkpf-gjahr,
+         blart        TYPE bkpf-blart,
+         bldat        TYPE bkpf-bldat,
+         budat        TYPE bkpf-budat,
+         monat        TYPE bkpf-monat,
+         buzei        TYPE bseg-buzei,
+         bschl        TYPE bseg-bschl,
+         koart        TYPE bseg-koart,
+         umskz        TYPE bseg-umskz,
+         umsks        TYPE bseg-umsks,
+         shkzg        TYPE bseg-shkzg,
+         dmbtr        TYPE bseg-dmbtr,
+         wrbtr        TYPE bseg-wrbtr,
+         kunnr        TYPE bseg-kunnr,
+         lifnr        TYPE bseg-lifnr,
+
+         name1        TYPE name1_gp,
+*         lifnr       TYPE lfa1-lifnr,
+*         lifnr1 TYPE lfa1-lifnr,
+         l_name1      TYPE name1_gp,
+         new_column   TYPE string,
+         new_column1  TYPE string,
+         addrnumber   TYPE ad_addrnum,
+         c_city1      TYPE ad_city1,
+         c_street     TYPE ad_street,
+         c_post_code1 TYPE ad_pstcd1,
+         v_city1      TYPE ad_city1,
+         v_street     TYPE ad_street,
+         v_post_code1 TYPE ad_pstcd1,
+
+       END OF s_final.
+
+DATA: wa_final TYPE s_final,
+      it_final TYPE TABLE OF s_final.
+
+DATA: fieldcat TYPE slis_t_fieldcat_alv,
+      layout   TYPE slis_layout_alv.
+
+DATA:  lt_domain_values TYPE TABLE OF dd07v,
+      lt1_domain_values TYPE TABLE OF dd07v ,
+       ls_domain_value  TYPE dd07v.
+
+DATA: it_listheader TYPE slis_t_listheader,
+      wa_listheader TYPE slis_listheader.
+
+
+START-OF-SELECTION.
+
+  SELECT bukrs belnr gjahr blart bldat budat monat
+      FROM bkpf
+      INTO TABLE it_bkpf
+      WHERE bukrs = c_code
+        AND belnr in s_doc
+        AND gjahr = s_year  .
+
+  IF it_bkpf IS NOT INITIAL.
+    SELECT   bukrs belnr gjahr buzei bschl koart umskz umsks shkzg dmbtr wrbtr kunnr lifnr
+      FROM bseg
+      INTO TABLE it_bseg
+      FOR ALL ENTRIES IN it_bkpf
+      WHERE bukrs = it_bkpf-bukrs
+        AND belnr = it_bkpf-belnr
+        AND gjahr = it_bkpf-gjahr
+        AND koart IN ( 'D', 'K' ).
+  ENDIF.
+  IF it_bseg IS NOT INITIAL.
+    SELECT kunnr name1 adrnr FROM kna1 INTO TABLE it_kna1 FOR ALL ENTRIES IN it_bseg
+      WHERE  kunnr = it_bseg-kunnr .
+  ENDIF .
+
+  IF it_bseg IS NOT INITIAL .
+    SELECT  lifnr name1 adrnr  FROM lfa1 INTO TABLE it_lfa1 FOR ALL ENTRIES IN it_bseg
+      WHERE lifnr = it_bseg-lifnr .
+  ENDIF.
+
+  IF it_kna1 IS NOT INITIAL  .
+    SELECT  addrnumber city1 street post_code1 FROM adrc INTO TABLE it_adrc_c FOR ALL ENTRIES IN it_kna1
+       WHERE  addrnumber = it_kna1-adrnr .
+  ENDIF.
+
+  IF it_lfa1 IS NOT INITIAL  .
+    SELECT  addrnumber city1 street post_code1 FROM adrc INTO TABLE it_adrc_v FOR ALL ENTRIES IN it_lfa1
+       WHERE  addrnumber = it_lfa1-adrnr .
+  ENDIF.
+
+  CALL FUNCTION 'DD_DOMVALUES_GET'
+    EXPORTING
+      domname   = 'KOART'
+      text      = abap_true "'X'
+      langu     = 'E'
+    TABLES
+      dd07v_tab = lt1_domain_values
+    EXCEPTIONS
+      OTHERS    = 1.
+  IF sy-subrc = 0.
+*  LOOP AT lt_domain_values_ INTO ls_domain_value.
+*    CLEAR ls_new_row.
+*    ls_new_row-KOART = ls_domain_value-domvalue_l. " Replace 'your_field' with your actual field name
+*    ls_new_row-new_column = 'KOART'. " Add your new column value here
+*    APPEND ls_new_row TO lt_new_table.
+*  ENDLOOP.
+  ENDIF.
+
+
+
+  CALL FUNCTION 'DD_DOMVALUES_GET'
+    EXPORTING
+      domname   = 'SHKZG'
+      text      = abap_true "'X'
+      langu     = 'E'
+    TABLES
+      dd07v_tab = lt_domain_values
+    EXCEPTIONS
+      OTHERS    = 1.
+  IF sy-subrc = 0.
+*  LOOP AT lt_domain_values INTO ls_domain_value.
+*    CLEAR ls_new_row.
+*    ls_new_row-KOART = ls_domain_value-domvalue_l. " Replace 'your_field' with your actual field name
+*    ls_new_row-new_column = 'KOART'. " Add your new column value here
+*    APPEND ls_new_row TO lt_new_table.
+*  ENDLOOP.
+  ENDIF.
+
+
+  LOOP AT it_bseg INTO wa_bseg.
+    READ TABLE it_bkpf INTO wa_bkpf WITH KEY bukrs = wa_bseg-bukrs.
+    IF sy-subrc IS INITIAL.
+      wa_final-bukrs = wa_bkpf-bukrs.
+      wa_final-belnr = wa_bkpf-belnr.
+      wa_final-gjahr = wa_bkpf-gjahr.
+      wa_final-blart = wa_bkpf-blart.
+      wa_final-bldat = wa_bkpf-bldat.
+      wa_final-budat = wa_bkpf-budat.
+      wa_final-monat = wa_bkpf-monat.
+    ENDIF.
+    wa_final-buzei = wa_bseg-buzei.
+    wa_final-bschl = wa_bseg-bschl.
+    wa_final-koart = wa_bseg-koart.
+
+    wa_final-umskz = wa_bseg-umskz.
+    wa_final-umsks = wa_bseg-umsks.
+    wa_final-shkzg = wa_bseg-shkzg.
+
+    IF wa_bseg-shkzg = 'S'.
+      wa_final-dmbtr = wa_bseg-dmbtr * ( -1 ) .
+    ELSE.
+      wa_final-dmbtr = wa_bseg-dmbtr.
+    ENDIF.
+
+*    wa_final-dmbtr = wa_bseg-dmbtr.
+    wa_final-wrbtr = wa_bseg-wrbtr.
+    wa_final-kunnr = wa_bseg-kunnr .
+    wa_final-lifnr = wa_bseg-lifnr .
+    READ TABLE it_kna1 INTO wa_kna1 WITH KEY kunnr = wa_bseg-kunnr .
+    IF sy-subrc IS INITIAL .
+*     wa_final-kunnr = wa_bseg-kunnr .
+      wa_final-name1 = wa_kna1-name1 .
+*    wa_final-lifnr = wa_kna1-lifnr .
+    ENDIF.
+
+    READ TABLE it_lfa1 INTO wa_lfa1 WITH  KEY lifnr = wa_bseg-lifnr .
+    IF sy-subrc IS INITIAL .
+*    wa_final-lifnr = wa_lfa1-lifnr .
+      wa_final-l_name1 = wa_lfa1-name1 .
+    ENDIF.
+
+    READ TABLE lt_domain_values INTO ls_domain_value WITH KEY domvalue_l = wa_bseg-koart  .
+    IF sy-subrc IS INITIAL .
+      wa_final-new_column = ls_domain_value-ddtext .
+    ENDIF.
+    READ TABLE lt_domain_values INTO ls_domain_value WITH KEY domvalue_l = wa_bseg-shkzg  .
+    IF sy-subrc IS INITIAL .
+      wa_final-new_column1 = ls_domain_value-ddtext .
+    ENDIF.
+
+    CLEAR: wa_adrc.
+    READ TABLE it_adrc_c INTO wa_adrc WITH KEY addrnumber = wa_kna1-adrnr .
+    IF sy-subrc IS INITIAL .
+
+      wa_final-c_city1 = wa_adrc-city1 .
+      wa_final-c_post_code1 = wa_adrc-post_code1 .
+      wa_final-c_street = wa_adrc-street .
+    ENDIF.
+
+    CLEAR: wa_adrc.
+    READ TABLE it_adrc_v INTO wa_adrc WITH KEY addrnumber = wa_lfa1-adrnr .
+    IF sy-subrc IS INITIAL .
+
+      wa_final-v_city1 = wa_adrc-city1 .
+      wa_final-v_post_code1 = wa_adrc-post_code1 .
+      wa_final-v_street = wa_adrc-street .
+    ENDIF.
+
+    APPEND wa_final TO it_final.
+    CLEAR: wa_final, wa_bkpf, wa_bseg, wa_kna1, wa_lfa1 .
+
+  ENDLOOP.
+
+
+  PERFORM build_fieldcat. " subroutine concept .
+
+PERFORM build_alv_header .
+
+ CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+      i_callback_program     = sy-repid
+      i_callback_top_of_page = 'TOP_OF_PAGE'
+      i_structure_name       = 'S_FINAL'
+      is_layout        = layout
+      it_fieldcat      = fieldcat
+    TABLES
+      t_outtab               = it_final.
+
+
+
+FORM build_fieldcat.
+  DATA: wa_fieldcat TYPE slis_fieldcat_alv.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'BUKRS' .
+  wa_fieldcat-seltext_m = 'Company Code'.
+  APPEND wa_fieldcat TO fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'BELNR'.
+  wa_fieldcat-seltext_m = 'Document Number'.
+  APPEND wa_fieldcat TO fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'GJAHR'.
+  wa_fieldcat-seltext_m = 'Fiscal Year'.
+  APPEND wa_fieldcat TO fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'BLART'.
+  wa_fieldcat-seltext_m = 'Document Type'.
+  APPEND wa_fieldcat TO fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'BLDAT'.
+  wa_fieldcat-seltext_m = 'Document Date'.
+  APPEND wa_fieldcat TO fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'BUDAT'.
+  wa_fieldcat-seltext_m = 'Posting Date'.
+  APPEND wa_fieldcat TO fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'MONAT'.
+  wa_fieldcat-seltext_m = 'Posting Period'.
+  APPEND wa_fieldcat TO fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'BUZEI'.
+  wa_fieldcat-seltext_m = 'Item Number'.
+  APPEND wa_fieldcat TO fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'BSCHL'.
+  wa_fieldcat-seltext_m = 'Posting Key'.
+  APPEND wa_fieldcat TO fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'KOART'.
+  wa_fieldcat-seltext_m = 'Account Type'.
+  APPEND wa_fieldcat TO fieldcat.
+
+CLEAR wa_fieldcat .
+  wa_fieldcat-fieldname = 'NEW_COLUMN' .
+  wa_fieldcat-seltext_m = 'Account Type Description' .
+  APPEND wa_fieldcat TO fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'UMSKZ'.
+  wa_fieldcat-seltext_m = 'Special G/L Indicator'.
+  APPEND wa_fieldcat TO fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'UMSKS'.
+  wa_fieldcat-seltext_m = 'Special G/L Transaction'.
+  APPEND wa_fieldcat TO fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'SHKZG'.
+  wa_fieldcat-seltext_m = 'Debit/Credit Indicator'.
+  APPEND wa_fieldcat TO fieldcat.
+
+   CLEAR wa_fieldcat .
+  wa_fieldcat-fieldname = 'NEW_COLUMN1' .
+  wa_fieldcat-seltext_m = 'Debit/Credit Indicator Description' .
+  APPEND wa_fieldcat TO fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'DMBTR'.
+  wa_fieldcat-seltext_m = 'Amount in Local Currency'.
+  APPEND wa_fieldcat TO fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'WRBTR'.
+  wa_fieldcat-seltext_m = 'Amount in Document Currency'.
+  APPEND wa_fieldcat TO fieldcat.
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'KUNNR' .
+  wa_fieldcat-seltext_m = 'CUSTOMER NUMBER'.
+  APPEND wa_fieldcat TO fieldcat.
+  CLEAR wa_fieldcat .
+
+  wa_fieldcat-fieldname = 'NAME1'.
+  wa_fieldcat-seltext_m = 'CUSTOMER NAME'.
+  APPEND wa_fieldcat TO fieldcat .
+  CLEAR wa_fieldcat .
+
+  wa_fieldcat-fieldname = 'LIFNR' .
+  wa_fieldcat-seltext_m = 'Account Number of Vendor or Creditor' .
+  APPEND wa_fieldcat TO fieldcat.
+  CLEAR wa_fieldcat .
+  wa_fieldcat-fieldname = 'l_NAME1' .
+  wa_fieldcat-seltext_m = 'VENDOR NAME' .
+  APPEND wa_fieldcat TO fieldcat.
+
+  CLEAR wa_fieldcat .
+  wa_fieldcat-fieldname = 'C_CITY1' .
+  wa_fieldcat-seltext_m = 'CUSTOMER CITY' .
+  APPEND wa_fieldcat TO fieldcat.
+  CLEAR wa_fieldcat .
+
+  wa_fieldcat-fieldname = 'C_STREET' .
+  wa_fieldcat-seltext_m = 'CUSTOMER STREET' .
+  APPEND wa_fieldcat TO fieldcat.
+  CLEAR wa_fieldcat .
+
+  wa_fieldcat-fieldname = 'C_POST_CODE1' .
+  wa_fieldcat-seltext_m = 'CUSTOMER POSTAL CODE' .
+  APPEND wa_fieldcat TO fieldcat.
+  CLEAR wa_fieldcat .
+
+  wa_fieldcat-fieldname = 'V_CITY1' .
+  wa_fieldcat-seltext_m = 'VENDOR CITY' .
+  APPEND wa_fieldcat TO fieldcat.
+  CLEAR wa_fieldcat .
+
+  wa_fieldcat-fieldname = 'V_STREET' .
+  wa_fieldcat-seltext_m = 'VENDOR STREET' .
+  APPEND wa_fieldcat TO fieldcat.
+  CLEAR wa_fieldcat .
+
+  wa_fieldcat-fieldname = 'V_POST_CODE1' .
+  wa_fieldcat-seltext_m = 'VENDOR POSTAL CODE' .
+  APPEND wa_fieldcat TO fieldcat.
+
+ENDFORM.
+
+INCLUDE zpractice_13_build_alv_headf01.
+FORM top_of_page.
+  CALL FUNCTION 'REUSE_ALV_COMMENTARY_WRITE'
+    EXPORTING
+      it_list_commentary = it_listheader.
+ENDFORM.
